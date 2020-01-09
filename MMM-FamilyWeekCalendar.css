@@ -1,0 +1,65 @@
+.MMM-FamilyWeekCalendar .symbol {
+  padding-left: 0;
+  padding-right: 10px;
+  font-size: 80%;
+  vertical-align: top;
+}
+
+.MMM-FamilyWeekCalendar .symbol span {
+  display: inline-block;
+  -ms-transform: translate(0, 2px); /* IE 9 */
+  -webkit-transform: translate(0, 2px); /* Safari */
+  transform: translate(0, 2px);
+}
+
+.MMM-FamilyWeekCalendar p {
+  margin:0px;
+}
+
+.MMM-FamilyWeekCalendar .title {
+  padding-left: 0;
+  padding-right: 0;
+  display: inline-block;
+}
+
+.MMM-FamilyWeekCalendar .time {
+  display: inline-block;
+  padding-right: 20px;
+  text-align: left;
+  vertical-align: top;
+  width: 50px;
+}
+
+.MMM-FamilyWeekCalendar table {
+  text-align: left;
+}
+
+.MMM-FamilyWeekCalendar table tr {
+  display: flex;
+}
+
+.MMM-FamilyWeekCalendar th {
+  flex-grow: 1;
+  width: 40%;
+  padding: 4px 0;
+}
+
+.MMM-FamilyWeekCalendar th:first-child {
+  flex-grow: 0;
+  width: 40px!important;
+}
+
+.MMM-FamilyWeekCalendar td {
+  flex-grow: 1;
+  border-top: 1px solid #666;
+  width: 40%;
+  text-align: left;
+  padding: 4px 0;
+}
+
+.MMM-FamilyWeekCalendar td:first-child {
+  flex-grow: 0;
+  border-top: 1px solid #666;
+  width: 40px!important;
+  padding: 4px 0;
+}
