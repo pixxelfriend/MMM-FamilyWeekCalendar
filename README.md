@@ -108,4 +108,4 @@ config: {
 | `method`              | Which authentication method should be used. HTTP Basic, Digest and Bearer authentication methods are supported. Basic authentication is used by default if this option is omitted. **Possible values:** `digest`, `basic`, `bearer` **Default value:** `basic`
 
 #### Todo
-* [ ] Check all default options
+* [ ] Check all default options.
