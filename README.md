@@ -4,7 +4,7 @@ This is a fork of the default `calendar` module of [Magic Mirror²](https://magi
 
 This module displays events from a public .ical calendar. It can combine multiple calendars.
 
-![ScreenShot](/screenshots/mm.png)
+![ScreenShot](/screenshot/screenshot.png)
 
 ## Using the module
 
