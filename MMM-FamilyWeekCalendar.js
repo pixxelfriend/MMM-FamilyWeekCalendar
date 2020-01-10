@@ -14,8 +14,6 @@ Module.register("MMM-FamilyWeekCalendar", {
 	defaults: {
 		maximumEntries: 20, // Total Maximum Entries
 		maximumNumberOfDays: 7,
-		displaySymbol: true,
-		defaultSymbol: "calendar", // Fontawesome Symbol see http://fontawesome.io/cheatsheet/
 		showLocation: false,
 		displayRepeatingCountTitle: false,
 		defaultRepeatingCountTitle: "",
@@ -36,11 +34,10 @@ Module.register("MMM-FamilyWeekCalendar", {
 		hidePrivate: false,
 		hideOngoing: false,
 		colored: false,
-		coloredSymbolOnly: false,
 		tableClass: "small",
 		calendars: [
 			{
-				symbol: "calendar",
+				name: "holidays",
 				url: "http://www.calendarlabs.com/templates/ical/US-Holidays.ics",
 			},
 		],
@@ -57,7 +54,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 
 	// Define required scripts.
 	getStyles: function () {
-		return ["MMM-FamilyWeekCalendar.css", "font-awesome.css"];
+		return ["MMM-FamilyWeekCalendar.css"];
 	},
 
 	// Define required scripts.
@@ -89,9 +86,6 @@ Module.register("MMM-FamilyWeekCalendar", {
 				maximumNumberOfDays: calendar.maximumNumberOfDays,
 				broadcastPastEvents: calendar.broadcastPastEvents,
 			};
-			if (calendar.symbolClass === "undefined" || calendar.symbolClass === null) {
-				calendarConfig.symbolClass = "";
-			}
 			if (calendar.titleClass === "undefined" || calendar.titleClass === null) {
 				calendarConfig.titleClass = "";
 			}
@@ -151,6 +145,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 
 		let day = moment();
 		const dayKeyFormat = "YYYY-MM-DD";
+		let currentFadeStep = 0;
 		const upcommingDays = {};
 		const endOfDays = day.clone().add(this.config.maximumNumberOfDays, "days");
 
@@ -171,6 +166,15 @@ Module.register("MMM-FamilyWeekCalendar", {
 				upcommingDays[dayKey][calendar.url] = [];
 			}
 			day = day.clone().add(1, "day");
+		}
+
+		if (this.config.fade && this.config.fadePoint < 1) {
+			if (this.config.fadePoint < 0) {
+				this.config.fadePoint = 0;
+			}
+
+			var startFade = this.config.maximumNumberOfDays * this.config.fadePoint;
+			var fadeSteps = this.config.maximumNumberOfDays - startFade;
 		}
 
 		/* Sort the event into the day / calendar object */
@@ -235,9 +239,16 @@ Module.register("MMM-FamilyWeekCalendar", {
 		wrapper.appendChild(tableHeadRow);
 
 		/* Create table rows for each day */
-		for(day in upcommingDays){
+		Object.keys(upcommingDays).forEach((day, index) => {
 			const row = document.createElement("tr");
 			const calendars = upcommingDays[day];
+
+			//fading
+			if (e >= startFade) {
+				currentFadeStep = index - startFade;
+				row.style.opacity = 1 - (1 / fadeSteps * currentFadeStep);
+			}
+
 			const dayLabel = document.createElement("td");
 			dayLabel.innerHTML = moment(day).format("dd");
 			row.appendChild(dayLabel);
@@ -264,7 +275,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 				row.appendChild(calendarColumn);
 			}
 			wrapper.appendChild(row);
-		}
+		});
 		return wrapper;
 	},
 
@@ -406,7 +417,6 @@ Module.register("MMM-FamilyWeekCalendar", {
 			maximumEntries: calendarConfig.maximumEntries || this.config.maximumEntries,
 			maximumNumberOfDays: calendarConfig.maximumNumberOfDays || this.config.maximumNumberOfDays,
 			fetchInterval: this.config.fetchInterval,
-			symbolClass: calendarConfig.symbolClass,
 			titleClass: calendarConfig.titleClass,
 			timeClass: calendarConfig.timeClass,
 			auth: auth,
@@ -414,29 +424,6 @@ Module.register("MMM-FamilyWeekCalendar", {
 		});
 	},
 
-	/**
-	 * symbolsForUrl(url)
-	 * Retrieves the symbols for a specific url.
-	 *
-	 * argument url string - Url to look for.
-	 *
-	 * return string/array - The Symbols
-	 */
-	symbolsForUrl: function (url) {
-		return this.getCalendarProperty(url, "symbol", this.config.defaultSymbol);
-	},
-
-	/**
-	 * symbolClassForUrl(url)
-	 * Retrieves the symbolClass for a specific url.
-	 *
-	 * @param url string - Url to look for.
-	 *
-	 * @returns string
-	 */
-	symbolClassForUrl: function (url) {
-		return this.getCalendarProperty(url, "symbolClass", "");
-	},
 
 	/**
 	 * titleClassForUrl(url)
@@ -611,7 +598,6 @@ Module.register("MMM-FamilyWeekCalendar", {
 			var calendar = this.calendarData[url];
 			for (var e in calendar) {
 				var event = cloneObject(calendar[e]);
-				event.symbol = this.symbolsForUrl(url);
 				event.calendarName = this.calendarNameForUrl(url);
 				event.color = this.colorForUrl(url);
 				delete event.url;
