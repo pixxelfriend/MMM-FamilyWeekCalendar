@@ -107,4 +107,5 @@ config: {
 | `pass`                | The password for HTTP authentication. (If you use Bearer authentication, this should be your BearerToken.)
 | `method`              | Which authentication method should be used. HTTP Basic, Digest and Bearer authentication methods are supported. Basic authentication is used by default if this option is omitted. **Possible values:** `digest`, `basic`, `bearer` **Default value:** `basic`
 
-Alternative calendar module for MagicMirror2
+#### Todo
+* [ ] Check all default options
