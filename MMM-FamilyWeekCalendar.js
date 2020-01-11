@@ -204,18 +204,26 @@ Module.register("MMM-FamilyWeekCalendar", {
 				else if(event.fullDayEvent){
 					for(day in upcommingDays){
 						if(moment(day).isBetween(startMoment.format(dayKeyFormat), endMoment.format(dayKeyFormat)) || startMoment.isSame(day, "day") ){
-							currentEvent["startDate"] = event.startDate;
-							currentEvent["endDate"]	= moment(event.endDate, "x").endOf("day");
+							currentEvent.startDate = event.startDate;
+							currentEvent.endDate	= moment(event.endDate, "x").endOf("day");
 							upcommingDays[day][currentEvent.url].push(event);
 						}
 					}
 				/* multiday events which are not fullday */
 				} else {
 					for(day in upcommingDays){
-						if(moment(day).isBetween(startMoment.format(dayKeyFormat), endMoment.format(dayKeyFormat)) || startMoment.isSame(day, "day") || endMoment.isSame(day, "day")){
-							currentEvent["startDate"] = event.startDate;
-							currentEvent["endDate"]	= moment(event.endDate, "x").endOf("day");
-							upcommingDays[day][currentEvent.url].push(event);
+						const clonedEvent = { ...currentEvent }
+						if(startMoment.isSame(day, "day")){
+							clonedEvent.fullDayEvent = false
+							clonedEvent.startDate = event.startDate;
+							upcommingDays[day][clonedEvent.url].push(clonedEvent);
+						} else if (endMoment.isSame(day, "day")){
+							clonedEvent.fullDayEvent = false
+							clonedEvent.endDate	= moment(clonedEvent.endDate, "x").endOf("day");
+							upcommingDays[day][clonedEvent.url].push(clonedEvent);
+						}
+						if(moment(day).isBetween(startMoment.format(dayKeyFormat), endMoment.format(dayKeyFormat))){
+							upcommingDays[day][clonedEvent.url].push(clonedEvent);
 						}
 					}
 				}
@@ -266,6 +274,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 						time.innerText = event.startDate ? moment(event.startDate, "x").format("LT") : "";
 					}
 					eventContent.appendChild(time);
+
 					const title = document.createElement("span");
 					title.className = `title ${this.titleClassForUrl(event.url)}`;
 					title.innerHTML =  this.titleTransform(event.title);
