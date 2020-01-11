@@ -17,7 +17,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 		showLocation: false,
 		displayRepeatingCountTitle: false,
 		defaultRepeatingCountTitle: "",
-		maxTitleLength: 25,
+		maxTitleLength: 30,
 		wrapEvents: false, // wrap events to multiple lines breaking at maxTitleLength
 		maxTitleLines: 3,
 		fetchInterval: 5 * 60 * 1000, // Update every 5 minutes.
@@ -253,6 +253,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 			dayLabel.innerHTML = moment(day).format("dd");
 			row.appendChild(dayLabel);
 
+			/* one column for each calendar */
 			for(calendar in calendars){
 				const calendarColumn = document.createElement("td");
 				for(index in upcommingDays[day][calendar]){
@@ -265,10 +266,17 @@ Module.register("MMM-FamilyWeekCalendar", {
 						time.innerText = event.startDate ? moment(event.startDate, "x").format("LT") : "";
 					}
 					eventContent.appendChild(time);
-
 					const title = document.createElement("span");
 					title.className = `title ${this.titleClassForUrl(event.url)}`;
-					title.innerText = event.title;
+					title.innerHTML =  this.titleTransform(event.title);
+
+					if(this.config.showLocation && event.location){
+						const location = document.createElement("span");
+						location.className = "location";
+						location.innerText = `(${event.location})`;
+						title.innerText+= " ";
+						title.appendChild(location);
+					}
 					eventContent.appendChild(title);
 					calendarColumn.appendChild(eventContent);
 				}
