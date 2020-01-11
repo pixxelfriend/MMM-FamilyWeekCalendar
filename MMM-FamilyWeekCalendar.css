@@ -32,6 +32,7 @@
 
 .MMM-FamilyWeekCalendar table {
   text-align: left;
+  border-spacing: 2px;
 }
 
 .MMM-FamilyWeekCalendar table tr {
@@ -62,4 +63,8 @@
   border-top: 1px solid #666;
   width: 40px!important;
   padding: 4px 0;
+}
+.MMM-FamilyWeekCalendar .location {
+  font-style: italic;
+  font-size: 90%;
 }
