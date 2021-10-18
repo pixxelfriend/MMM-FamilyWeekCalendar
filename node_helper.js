@@ -6,7 +6,6 @@
  */
 
 var NodeHelper = require("node_helper");
-var validUrl = require("valid-url");
 var CalendarFetcher = require("./calendarfetcher.js");
 
 module.exports = NodeHelper.create({
@@ -39,7 +38,9 @@ module.exports = NodeHelper.create({
 	createFetcher: function(url, fetchInterval, excludedEvents, maximumEntries, maximumNumberOfDays, auth, broadcastPastEvents) {
 		var self = this;
 
-		if (!validUrl.isUri(url)) {
+		try {
+			new URL(url);
+		} catch(error){
 			self.sendSocketNotification("INCORRECT_URL", {url: url});
 			return;
 		}
