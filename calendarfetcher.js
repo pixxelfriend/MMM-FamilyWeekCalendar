@@ -1,16 +1,15 @@
-/* Magic Mirror
+/* MagicMirror²
  * Node Helper: Calendar - CalendarFetcher
  *
  * By Michael Teeuw https://michaelteeuw.nl
  * MIT Licensed.
  */
-const CalendarUtils = require("./calendarutils");
+
+const https = require("https");
+const ical = require("node-ical");
 const Log = require("logger");
 const NodeHelper = require("node_helper");
-const ical = require("node-ical");
-const fetch = require("node-fetch");
-const digest = require("digest-fetch");
-const https = require("https");
+const CalendarFetcherUtils = require("./calendarfetcherutils");
 
 /**
  *
@@ -38,10 +37,9 @@ const CalendarFetcher = function (url, reloadInterval, excludedEvents, maximumEn
 		clearTimeout(reloadTimer);
 		reloadTimer = null;
 		const nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
-		let fetcher = null;
 		let httpsAgent = null;
 		let headers = {
-			"User-Agent": "Mozilla/5.0 (Node.js " + nodeVersion + ") MagicMirror/" + global.version + " (https://github.com/MichMich/MagicMirror/)"
+			"User-Agent": `Mozilla/5.0 (Node.js ${nodeVersion}) MagicMirror/${global.version}`
 		};
 
 		if (selfSignedCert) {
@@ -51,18 +49,13 @@ const CalendarFetcher = function (url, reloadInterval, excludedEvents, maximumEn
 		}
 		if (auth) {
 			if (auth.method === "bearer") {
-				headers.Authorization = "Bearer " + auth.pass;
-			} else if (auth.method === "digest") {
-				fetcher = new digest(auth.user, auth.pass).fetch(url, { headers: headers, agent: httpsAgent });
+				headers.Authorization = `Bearer ${auth.pass}`;
 			} else {
-				headers.Authorization = "Basic " + Buffer.from(auth.user + ":" + auth.pass).toString("base64");
+				headers.Authorization = `Basic ${Buffer.from(`${auth.user}:${auth.pass}`).toString("base64")}`;
 			}
 		}
-		if (fetcher === null) {
-			fetcher = fetch(url, { headers: headers, agent: httpsAgent });
-		}
 
-		fetcher
+		fetch(url, { headers: headers, agent: httpsAgent })
 			.then(NodeHelper.checkFetchStatus)
 			.then((response) => response.text())
 			.then((responseData) => {
@@ -70,8 +63,8 @@ const CalendarFetcher = function (url, reloadInterval, excludedEvents, maximumEn
 
 				try {
 					data = ical.parseICS(responseData);
-					Log.debug("parsed data=" + JSON.stringify(data));
-					events = CalendarUtils.filterEvents(data, {
+					Log.debug(`parsed data=${JSON.stringify(data)}`);
+					events = CalendarFetcherUtils.filterEvents(data, {
 						excludedEvents,
 						includePastEvents,
 						maximumEntries,
@@ -114,13 +107,12 @@ const CalendarFetcher = function (url, reloadInterval, excludedEvents, maximumEn
 	 * Broadcast the existing events.
 	 */
 	this.broadcastEvents = function () {
-		Log.info("Calendar-Fetcher: Broadcasting " + events.length + " events.");
+		Log.info(`Calendar-Fetcher: Broadcasting ${events.length} events from ${url}.`);
 		eventsReceivedCallback(this);
 	};
 
 	/**
 	 * Sets the on success callback
-	 *
 	 * @param {Function} callback The on success callback.
 	 */
 	this.onReceive = function (callback) {
@@ -129,7 +121,6 @@ const CalendarFetcher = function (url, reloadInterval, excludedEvents, maximumEn
 
 	/**
 	 * Sets the on error callback
-	 *
 	 * @param {Function} callback The on error callback.
 	 */
 	this.onError = function (callback) {
@@ -138,7 +129,6 @@ const CalendarFetcher = function (url, reloadInterval, excludedEvents, maximumEn
 
 	/**
 	 * Returns the url of this fetcher.
-	 *
 	 * @returns {string} The url of this fetcher.
 	 */
 	this.url = function () {
@@ -147,7 +137,6 @@ const CalendarFetcher = function (url, reloadInterval, excludedEvents, maximumEn
 
 	/**
 	 * Returns current available events for this fetcher.
-	 *
 	 * @returns {object[]} The current available events for this fetcher.
 	 */
 	this.events = function () {
