@@ -1,147 +1,128 @@
-/* MagicMirror²
- * Node Helper: Calendar - CalendarFetcher
- *
- * By Michael Teeuw https://michaelteeuw.nl
- * MIT Licensed.
- */
-
-const https = require("https");
 const ical = require("node-ical");
 const Log = require("logger");
-const NodeHelper = require("node_helper");
 const CalendarFetcherUtils = require("./calendarfetcherutils");
+const HTTPFetcher = require("#http_fetcher");
 
 /**
- *
- * @param {string} url The url of the calendar to fetch
- * @param {number} reloadInterval Time in ms the calendar is fetched again
- * @param {string[]} excludedEvents An array of words / phrases from event titles that will be excluded from being shown.
- * @param {number} maximumEntries The maximum number of events fetched.
- * @param {number} maximumNumberOfDays The maximum number of days an event should be in the future.
- * @param {object} auth The object containing options for authentication against the calendar.
- * @param {boolean} includePastEvents If true events from the past maximumNumberOfDays will be fetched too
- * @param {boolean} selfSignedCert If true, the server certificate is not verified against the list of supplied CAs.
+ * CalendarFetcher - Fetches and parses iCal calendar data
+ * Uses HTTPFetcher for HTTP handling with intelligent error handling
  * @class
  */
-const CalendarFetcher = function (url, reloadInterval, excludedEvents, maximumEntries, maximumNumberOfDays, auth, includePastEvents, selfSignedCert) {
-	let reloadTimer = null;
-	let events = [];
-
-	let fetchFailedCallback = function () {};
-	let eventsReceivedCallback = function () {};
+class CalendarFetcher {
 
 	/**
-	 * Initiates calendar fetch.
+	 * Creates a new CalendarFetcher instance
+	 * @param {string} url - The URL of the calendar to fetch
+	 * @param {number} reloadInterval - Time in ms between fetches
+	 * @param {string[]} excludedEvents - Event titles to exclude
+	 * @param {number} maximumEntries - Maximum number of events to return
+	 * @param {number} maximumNumberOfDays - Maximum days in the future to fetch
+	 * @param {object} auth - Authentication options {method: 'basic'|'bearer', user, pass}
+	 * @param {boolean} includePastEvents - Whether to include past events
+	 * @param {boolean} selfSignedCert - Whether to accept self-signed certificates
 	 */
-	const fetchCalendar = () => {
-		clearTimeout(reloadTimer);
-		reloadTimer = null;
-		const nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
-		let httpsAgent = null;
-		let headers = {
-			"User-Agent": `Mozilla/5.0 (Node.js ${nodeVersion}) MagicMirror/${global.version}`
-		};
+	constructor (url, reloadInterval, excludedEvents, maximumEntries, maximumNumberOfDays, auth, includePastEvents, selfSignedCert) {
+		this.url = url;
+		this.excludedEvents = excludedEvents;
+		this.maximumEntries = maximumEntries;
+		this.maximumNumberOfDays = maximumNumberOfDays;
+		this.includePastEvents = includePastEvents;
 
-		if (selfSignedCert) {
-			httpsAgent = new https.Agent({
-				rejectUnauthorized: false
+		this.events = [];
+		this.lastFetch = null;
+		this.fetchFailedCallback = () => {};
+		this.eventsReceivedCallback = () => {};
+
+		// Use HTTPFetcher for HTTP handling (Composition)
+		this.httpFetcher = new HTTPFetcher(url, {
+			reloadInterval,
+			auth,
+			selfSignedCert
+		});
+
+		// Wire up HTTPFetcher events
+		this.httpFetcher.on("response", (response) => this.#handleResponse(response));
+		this.httpFetcher.on("error", (errorInfo) => this.fetchFailedCallback(this, errorInfo));
+	}
+
+	/**
+	 * Handles successful HTTP response
+	 * @param {Response} response - The fetch Response object
+	 */
+	async #handleResponse (response) {
+		try {
+			const responseData = await response.text();
+			const parsed = ical.parseICS(responseData);
+
+			Log.debug(`Parsed iCal data from ${this.url} with ${Object.keys(parsed).length} entries.`);
+
+			this.events = CalendarFetcherUtils.filterEvents(parsed, {
+				excludedEvents: this.excludedEvents,
+				includePastEvents: this.includePastEvents,
+				maximumEntries: this.maximumEntries,
+				maximumNumberOfDays: this.maximumNumberOfDays
+			});
+
+			this.lastFetch = Date.now();
+			this.broadcastEvents();
+		} catch (error) {
+			Log.error(`${this.url} - iCal parsing failed: ${error.message}`);
+			this.fetchFailedCallback(this, {
+				message: `iCal parsing failed: ${error.message}`,
+				status: null,
+				errorType: "PARSE_ERROR",
+				translationKey: "MODULE_ERROR_UNSPECIFIED",
+				retryAfter: this.httpFetcher.reloadInterval,
+				retryCount: 0,
+				url: this.url,
+				originalError: error
 			});
 		}
-		if (auth) {
-			if (auth.method === "bearer") {
-				headers.Authorization = `Bearer ${auth.pass}`;
-			} else {
-				headers.Authorization = `Basic ${Buffer.from(`${auth.user}:${auth.pass}`).toString("base64")}`;
-			}
+	}
+
+	/**
+	 * Starts fetching calendar data
+	 */
+	fetchCalendar () {
+		this.httpFetcher.startPeriodicFetch();
+	}
+
+	/**
+	 * Check if enough time has passed since the last fetch to warrant a new one.
+	 * Uses reloadInterval as the threshold to respect user's configured fetchInterval.
+	 * @returns {boolean} True if a new fetch should be performed
+	 */
+	shouldRefetch () {
+		if (!this.lastFetch) {
+			return true;
 		}
-
-		fetch(url, { headers: headers, agent: httpsAgent })
-			.then(NodeHelper.checkFetchStatus)
-			.then((response) => response.text())
-			.then((responseData) => {
-				let data = [];
-
-				try {
-					data = ical.parseICS(responseData);
-					Log.debug(`parsed data=${JSON.stringify(data)}`);
-					events = CalendarFetcherUtils.filterEvents(data, {
-						excludedEvents,
-						includePastEvents,
-						maximumEntries,
-						maximumNumberOfDays
-					});
-				} catch (error) {
-					fetchFailedCallback(this, error);
-					scheduleTimer();
-					return;
-				}
-				this.broadcastEvents();
-				scheduleTimer();
-			})
-			.catch((error) => {
-				fetchFailedCallback(this, error);
-				scheduleTimer();
-			});
-	};
+		const timeSinceLastFetch = Date.now() - this.lastFetch;
+		return timeSinceLastFetch >= this.httpFetcher.reloadInterval;
+	}
 
 	/**
-	 * Schedule the timer for the next update.
+	 * Broadcasts the current events to listeners
 	 */
-	const scheduleTimer = function () {
-		clearTimeout(reloadTimer);
-		reloadTimer = setTimeout(function () {
-			fetchCalendar();
-		}, reloadInterval);
-	};
-
-	/* public methods */
+	broadcastEvents () {
+		Log.info(`Broadcasting ${this.events.length} events from ${this.url}.`);
+		this.eventsReceivedCallback(this);
+	}
 
 	/**
-	 * Initiate fetchCalendar();
+	 * Sets the callback for successful event fetches
+	 * @param {(fetcher: CalendarFetcher) => void} callback - Called when events are received
 	 */
-	this.startFetch = function () {
-		fetchCalendar();
-	};
+	onReceive (callback) {
+		this.eventsReceivedCallback = callback;
+	}
 
 	/**
-	 * Broadcast the existing events.
+	 * Sets the callback for fetch failures
+	 * @param {(fetcher: CalendarFetcher, error: Error) => void} callback - Called when a fetch fails
 	 */
-	this.broadcastEvents = function () {
-		Log.info(`Calendar-Fetcher: Broadcasting ${events.length} events from ${url}.`);
-		eventsReceivedCallback(this);
-	};
-
-	/**
-	 * Sets the on success callback
-	 * @param {Function} callback The on success callback.
-	 */
-	this.onReceive = function (callback) {
-		eventsReceivedCallback = callback;
-	};
-
-	/**
-	 * Sets the on error callback
-	 * @param {Function} callback The on error callback.
-	 */
-	this.onError = function (callback) {
-		fetchFailedCallback = callback;
-	};
-
-	/**
-	 * Returns the url of this fetcher.
-	 * @returns {string} The url of this fetcher.
-	 */
-	this.url = function () {
-		return url;
-	};
-
-	/**
-	 * Returns current available events for this fetcher.
-	 * @returns {object[]} The current available events for this fetcher.
-	 */
-	this.events = function () {
-		return events;
-	};
-};
+	onError (callback) {
+		this.fetchFailedCallback = callback;
+	}
+}
 
 module.exports = CalendarFetcher;

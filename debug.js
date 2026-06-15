@@ -8,13 +8,16 @@
 
 var CalendarFetcher = require("./calendarfetcher.js");
 
-var url = "https://calendar.google.com/calendar/ical/pkm1t2uedjbp0uvq1o7oj1jouo%40group.calendar.google.com/private-08ba559f89eec70dd74bbd887d0a3598/basic.ics";  // Standard test URL
+//var url = "https://calendar.google.com/calendar/ical/pkm1t2uedjbp0uvq1o7oj1jouo%40group.calendar.google.com/private-08ba559f89eec70dd74bbd887d0a3598/basic.ics";  // Standard test URL
 // var url = "https://www.googleapis.com/calendar/v3/calendars/primary/events/"; // URL for Bearer auth (must be configured  in Google OAuth2 first)
+var url = "https://cloud.twolabs.de/remote.php/dav/calendars/steffen/steffen-persnlich?export"
 var fetchInterval = 60 * 60 * 1000;
 var maximumEntries = 10;
 var maximumNumberOfDays = 365;
-var user = "magicmirror";
-var pass = "MyStrongPass";
+// var user = "magicmirror";
+// var pass = "MyStrongPass";
+var user = "steffen";
+var pass = "hsteffen";
 var broadcastPastEvents = false;
 
 var auth = {

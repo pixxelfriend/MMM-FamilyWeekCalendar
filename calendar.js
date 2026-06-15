@@ -1,19 +1,10 @@
-/* global Module, Log, moment, CalendarUtils */
+/* global CalendarUtils */
 
-/* Magic Mirror
- * Module: MMM-FamilyWeekCalendar
- *
- * By Steffen Hoffmann http://www.twolabs.de
- * Based on the calendar module by Michael Teeuw http://michaelteeuw.nl
- * MIT Licensed.
- */
-
-Module.register("MMM-FamilyWeekCalendar", {
-
+Module.register("calendar", {
 	// Define module defaults
 	defaults: {
-		maximumEntries: 20, // Total Maximum Entries
-		maximumNumberOfDays: 7,
+		maximumEntries: 10, // Total Maximum Entries
+		maximumNumberOfDays: 365,
 		limitDays: 0, // Limit the number of days shown, 0 = no limit
 		pastDaysCount: 0,
 		displaySymbol: true,
@@ -22,18 +13,18 @@ Module.register("MMM-FamilyWeekCalendar", {
 		showLocation: false,
 		displayRepeatingCountTitle: false,
 		defaultRepeatingCountTitle: "",
-		maxTitleLength: 30,
+		maxTitleLength: 25,
 		maxLocationTitleLength: 25,
 		wrapEvents: false, // Wrap events to multiple lines breaking at maxTitleLength
 		wrapLocationEvents: false,
 		maxTitleLines: 3,
 		maxEventTitleLines: 3,
-		fetchInterval: 5 * 60 * 1000, // Update every 5 minutes.
+		fetchInterval: 60 * 60 * 1000, // Update every hour
 		animationSpeed: 2000,
 		fade: true,
 		fadePoint: 0.25, // Start on 1/4th of the list.
 		urgency: 7,
-		timeFormat: "dateheaders",
+		timeFormat: "relative",
 		dateFormat: "MMM Do",
 		dateEndFormat: "LT",
 		fullDayEventDateFormat: "MMM Do",
@@ -50,9 +41,9 @@ Module.register("MMM-FamilyWeekCalendar", {
 		tableClass: "small",
 		calendars: [
 			{
-				name: "holidays",
-				url: "http://www.calendarlabs.com/templates/ical/US-Holidays.ics",
-			},
+				symbol: "calendar-alt",
+				url: "https://www.calendarlabs.com/templates/ical/US-Holidays.ics"
+			}
 		],
 		customEvents: [
 			// Array of {keyword: "", symbol: "", color: "", eventClass: ""} where Keyword is a regexp and symbol/color/eventClass are to be applied for matched
@@ -79,7 +70,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 
 	// Define required scripts.
 	getStyles () {
-		return ["MMM-FamilyWeekCalendar.css", "font-awesome.css"];
+		return ["calendar.css", "font-awesome.css"];
 	},
 
 	// Define required scripts.
@@ -89,6 +80,12 @@ Module.register("MMM-FamilyWeekCalendar", {
 
 	// Define required translations.
 	getTranslations () {
+
+		/*
+		 * The translations for the default modules are defined in the core translation files.
+		 * Therefore we can just return false. Otherwise we should have returned a dictionary.
+		 * If you're trying to build your own module including translations, check out the documentation.
+		 */
 		return false;
 	},
 
@@ -97,12 +94,12 @@ Module.register("MMM-FamilyWeekCalendar", {
 		Log.info(`Starting module: ${this.name}`);
 
 		if (this.config.colored) {
-			Log.warn("[MMM-FamilyWeekCalendar] Your are using the deprecated config values 'colored'. Please switch to 'coloredSymbol' & 'coloredText'!");
+			Log.warn("[calendar] Your are using the deprecated config values 'colored'. Please switch to 'coloredSymbol' & 'coloredText'!");
 			this.config.coloredText = true;
 			this.config.coloredSymbol = true;
 		}
 		if (this.config.coloredSymbolOnly) {
-			Log.warn("[MMM-FamilyWeekCalendar] Your are using the deprecated config values 'coloredSymbolOnly'. Please switch to 'coloredSymbol' & 'coloredText'!");
+			Log.warn("[calendar] Your are using the deprecated config values 'coloredSymbolOnly'. Please switch to 'coloredSymbol' & 'coloredText'!");
 			this.config.coloredText = false;
 			this.config.coloredSymbol = true;
 		}
@@ -144,7 +141,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 
 			// we check user and password here for backwards compatibility with old configs
 			if (calendar.user && calendar.pass) {
-				Log.warn("[MMM-FamilyWeekCalendar] Deprecation warning: Please update your calendar authentication configuration.");
+				Log.warn("[calendar] Deprecation warning: Please update your calendar authentication configuration.");
 				Log.warn("https://docs.magicmirror.builders/modules/calendar.html#configuration-options");
 				calendar.auth = {
 					user: calendar.user,
@@ -161,7 +158,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 
 		// for backward compatibility titleReplace
 		if (typeof this.config.titleReplace !== "undefined") {
-			Log.warn("[MMM-FamilyWeekCalendar] Deprecation warning: Please consider upgrading your calendar titleReplace configuration to customEvents.");
+			Log.warn("[calendar] Deprecation warning: Please consider upgrading your calendar titleReplace configuration to customEvents.");
 			for (const [titlesearchstr, titlereplacestr] of Object.entries(this.config.titleReplace)) {
 				this.config.customEvents.push({ keyword: ".*", transform: { search: titlesearchstr, replace: titlereplacestr } });
 			}
@@ -213,7 +210,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 					// set this calendar as displayed
 					this.calendarDisplayer[payload.url] = true;
 				} else {
-					Log.debug("[MMM-FamilyWeekCalendar] DOM not updated waiting self update()");
+					Log.debug("[calendar] DOM not updated waiting self update()");
 				}
 				return;
 			}
@@ -228,12 +225,6 @@ Module.register("MMM-FamilyWeekCalendar", {
 
 	// Override dom generator.
 	getDom () {
-		let day = moment();
-		const dayKeyFormat = "YYYY-MM-DD";
-		let currentFadeStep = 0;
-		const upcommingDays = {};
-		const endOfDays = day.clone().add(this.config.maximumNumberOfDays, "days");
-
 		const events = this.createEventList(true);
 		const wrapper = document.createElement("table");
 		wrapper.className = this.config.tableClass;
@@ -250,15 +241,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 			return wrapper;
 		}
 
-		while (day.isBefore(endOfDays, "day")) {
-			const dayKey = day.format(dayKeyFormat);
-			upcommingDays[dayKey] = {};
-			for (let calendar of this.config.calendars) {
-				upcommingDays[dayKey][calendar.url] = [];
-			}
-			day.add(1, "day");
-		}
-
+		let currentFadeStep = 0;
 		let startFade;
 		let fadeSteps;
 
@@ -266,201 +249,215 @@ Module.register("MMM-FamilyWeekCalendar", {
 			if (this.config.fadePoint < 0) {
 				this.config.fadePoint = 0;
 			}
-			startFade = this.config.maximumNumberOfDays * this.config.fadePoint;
-			fadeSteps = this.config.maximumNumberOfDays - startFade;
+			startFade = events.length * this.config.fadePoint;
+			fadeSteps = events.length - startFade;
 		}
 
-		/* Sort the event into the day / calendar object */
-		for (const event of events) {
-			const endMoment = this.timestampToMoment(event.endDate);
-			const startMoment = this.timestampToMoment(event.startDate);
-			const currentEvent = {
-				description: event.description,
-				fullDayEvent: event.fullDayEvent,
-				geo: event.geo,
-				location: event.location,
-				title: event.title,
-				today: event.today,
-				url: event.url,
-				firstYear: event.firstYear,
-				recurringEvent: event.recurringEvent,
-				startDate: event.startDate,
-				endDate: event.endDate
-			};
+		let lastSeenDate = "";
 
-			/* Multi day events  */
-			if (!this.isSameDay(startMoment, endMoment)) {
-				const diff = endMoment.diff(startMoment, "days");
-				/* Fix for fullDayEvent: They will be recognized as multiday event, because it ends on 0:00 of the next day */
-				if (event.fullDayEvent && diff === 1) {
-					const dateKey = startMoment.format(dayKeyFormat);
-					if (upcommingDays[dateKey] && upcommingDays[dateKey][currentEvent.url]) {
-						upcommingDays[dateKey][currentEvent.url].push(event);
+		events.forEach((event, index) => {
+			const eventStartDateMoment = this.timestampToMoment(event.startDate);
+			const eventEndDateMoment = this.timestampToMoment(event.endDate);
+			const dateAsString = eventStartDateMoment.format(this.config.dateFormat);
+			if (this.config.timeFormat === "dateheaders") {
+				if (lastSeenDate !== dateAsString) {
+					const dateRow = document.createElement("tr");
+					dateRow.className = "dateheader normal";
+					if (event.today) dateRow.className += " today";
+					else if (event.dayBeforeYesterday) dateRow.className += " dayBeforeYesterday";
+					else if (event.yesterday) dateRow.className += " yesterday";
+					else if (event.tomorrow) dateRow.className += " tomorrow";
+					else if (event.dayAfterTomorrow) dateRow.className += " dayAfterTomorrow";
+
+					const dateCell = document.createElement("td");
+					dateCell.colSpan = "3";
+					dateCell.innerHTML = dateAsString;
+					dateCell.style.paddingTop = "10px";
+					dateRow.appendChild(dateCell);
+					wrapper.appendChild(dateRow);
+
+					if (this.config.fade && index >= startFade) {
+						//fading
+						currentFadeStep = index - startFade;
+						dateRow.style.opacity = 1 - (1 / fadeSteps) * currentFadeStep;
+					}
+
+					lastSeenDate = dateAsString;
+				}
+			}
+
+			const eventWrapper = document.createElement("tr");
+
+			if (this.config.coloredText) {
+				eventWrapper.style.cssText = `color:${this.colorForUrl(event.url, false)}`;
+			}
+
+			if (this.config.coloredBackground) {
+				eventWrapper.style.backgroundColor = this.colorForUrl(event.url, true);
+			}
+
+			if (this.config.coloredBorder) {
+				eventWrapper.style.borderColor = this.colorForUrl(event.url, false);
+			}
+
+			eventWrapper.className = "event-wrapper normal event";
+			if (event.today) eventWrapper.className += " today";
+			else if (event.dayBeforeYesterday) eventWrapper.className += " dayBeforeYesterday";
+			else if (event.yesterday) eventWrapper.className += " yesterday";
+			else if (event.tomorrow) eventWrapper.className += " tomorrow";
+			else if (event.dayAfterTomorrow) eventWrapper.className += " dayAfterTomorrow";
+
+			const symbolWrapper = document.createElement("td");
+
+			if (this.config.displaySymbol) {
+				if (this.config.coloredSymbol) {
+					symbolWrapper.style.cssText = `color:${this.colorForUrl(event.url, false)}`;
+				}
+
+				const symbolClass = this.symbolClassForUrl(event.url);
+				symbolWrapper.className = `symbol ${symbolClass}`;
+
+				const symbols = this.symbolsForEvent(event);
+				symbols.forEach((s) => {
+					const symbol = document.createElement("span");
+					symbol.className = s;
+					symbolWrapper.appendChild(symbol);
+				});
+				eventWrapper.appendChild(symbolWrapper);
+			} else if (this.config.timeFormat === "dateheaders") {
+				const blankCell = document.createElement("td");
+				blankCell.innerHTML = "&nbsp;&nbsp;&nbsp;";
+				eventWrapper.appendChild(blankCell);
+			}
+
+			const titleWrapper = document.createElement("td");
+			let repeatingCountTitle = "";
+
+			if (this.config.displayRepeatingCountTitle && event.firstYear !== undefined) {
+				repeatingCountTitle = this.countTitleForUrl(event.url);
+
+				if (repeatingCountTitle !== "") {
+					const thisYear = eventStartDateMoment.year(),
+						yearDiff = thisYear - event.firstYear;
+
+					if (yearDiff > 0) {
+						repeatingCountTitle = `, ${yearDiff} ${repeatingCountTitle}`;
 					}
 				}
-				/* all other full day events */
-				else if (event.fullDayEvent) {
-					for (const dKey in upcommingDays) {
-						if (moment(dKey).isBetween(startMoment.format(dayKeyFormat), endMoment.format(dayKeyFormat)) || startMoment.isSame(dKey, "day")) {
-							const dayEvent = { ...currentEvent };
-							dayEvent.startDate = event.startDate;
-							dayEvent.endDate = endMoment.endOf("day").format("x");
-							if (upcommingDays[dKey] && upcommingDays[dKey][dayEvent.url]) {
-								upcommingDays[dKey][dayEvent.url].push(dayEvent);
+			}
+
+			var transformedTitle = event.title;
+
+			// Color events if custom color or eventClass are specified, transform title if required
+			if (this.config.customEvents.length > 0) {
+				for (let ev in this.config.customEvents) {
+					let needle = new RegExp(this.config.customEvents[ev].keyword, "gi");
+					if (needle.test(event.title)) {
+						if (typeof this.config.customEvents[ev].transform === "object") {
+							transformedTitle = CalendarUtils.titleTransform(transformedTitle, [this.config.customEvents[ev].transform]);
+						}
+						if (typeof this.config.customEvents[ev].color !== "undefined" && this.config.customEvents[ev].color !== "") {
+							// Respect parameter ColoredSymbolOnly also for custom events
+							if (this.config.coloredText) {
+								eventWrapper.style.cssText = `color:${this.config.customEvents[ev].color}`;
+								titleWrapper.style.cssText = `color:${this.config.customEvents[ev].color}`;
+							}
+							if (this.config.displaySymbol && this.config.coloredSymbol) {
+								symbolWrapper.style.cssText = `color:${this.config.customEvents[ev].color}`;
 							}
 						}
+						if (typeof this.config.customEvents[ev].eventClass !== "undefined" && this.config.customEvents[ev].eventClass !== "") {
+							eventWrapper.className += ` ${this.config.customEvents[ev].eventClass}`;
+						}
 					}
-				/* multiday events which are not fullday */
+				}
+			}
+
+			titleWrapper.innerHTML = CalendarUtils.shorten(transformedTitle, this.config.maxTitleLength, this.config.wrapEvents, this.config.maxTitleLines) + repeatingCountTitle;
+
+			const titleClass = this.titleClassForUrl(event.url);
+
+			if (!this.config.coloredText) {
+				titleWrapper.className = `title bright ${titleClass}`;
+			} else {
+				titleWrapper.className = `title ${titleClass}`;
+			}
+
+			if (this.config.timeFormat === "dateheaders") {
+				this.renderDateHeadersEventTime(eventWrapper, titleWrapper, event, eventStartDateMoment, eventEndDateMoment);
+			} else {
+				const timeWrapper = document.createElement("td");
+
+				eventWrapper.appendChild(titleWrapper);
+				const now = moment();
+
+				if (this.config.timeFormat === "absolute") {
+					timeWrapper.innerHTML = this.buildAbsoluteTimeText(event, eventStartDateMoment, eventEndDateMoment, now);
 				} else {
-					for (const dKey in upcommingDays) {
-						const clonedEvent = { ...currentEvent };
-						if (startMoment.isSame(dKey, "day")) {
-							clonedEvent.fullDayEvent = false;
-							clonedEvent.startDate = event.startDate;
-							if (upcommingDays[dKey] && upcommingDays[dKey][clonedEvent.url]) {
-								upcommingDays[dKey][clonedEvent.url].push(clonedEvent);
-							}
-						} else if (endMoment.isSame(dKey, "day")) {
-							clonedEvent.fullDayEvent = false;
-							clonedEvent.endDate = endMoment.endOf("day").format("x");
-							if (upcommingDays[dKey] && upcommingDays[dKey][clonedEvent.url]) {
-								upcommingDays[dKey][clonedEvent.url].push(clonedEvent);
-							}
-						}
-						if (moment(dKey).isBetween(startMoment.format(dayKeyFormat), endMoment.format(dayKeyFormat))) {
-							if (upcommingDays[dKey] && upcommingDays[dKey][clonedEvent.url]) {
-								upcommingDays[dKey][clonedEvent.url].push(clonedEvent);
-							}
-						}
-					}
+					timeWrapper.innerHTML = this.buildRelativeTimeText(event, eventStartDateMoment, eventEndDateMoment, now);
 				}
+
+				timeWrapper.className = `time light ${this.timeClassForUrl(event.url)}`;
+				eventWrapper.appendChild(timeWrapper);
 			}
-			/* Single day events */
-			else {
-				const dateKey = startMoment.format(dayKeyFormat);
-				if (upcommingDays[dateKey] && upcommingDays[dateKey][currentEvent.url]) {
-					upcommingDays[dateKey][currentEvent.url].push(event);
-				}
-			}
-		}
 
-		/* Create Table Header */
-		const tableHeadRow = document.createElement("tr");
-		tableHeadRow.appendChild(document.createElement("th"));
-		for (const calendar of this.config.calendars) {
-			const col = document.createElement("th");
-			col.innerHTML = calendar.name || "";
-			tableHeadRow.appendChild(col);
-		}
-		wrapper.appendChild(tableHeadRow);
-
-		/* Create table rows for each day */
-		Object.keys(upcommingDays).forEach((day, index) => {
-			const row = document.createElement("tr");
-			const calendars = upcommingDays[day];
-
-			// fading
-			if (this.config.fade && index >= startFade) {
+			// Create fade effect.
+			if (index >= startFade) {
 				currentFadeStep = index - startFade;
-				row.style.opacity = 1 - (1 / fadeSteps) * currentFadeStep;
+				eventWrapper.style.opacity = 1 - (1 / fadeSteps) * currentFadeStep;
 			}
+			wrapper.appendChild(eventWrapper);
 
-			const dayLabel = document.createElement("td");
-			dayLabel.innerHTML = moment(day).format("dd");
-			row.appendChild(dayLabel);
+			if (this.config.showLocation) {
+				if (event.location !== false) {
+					const locationRow = document.createElement("tr");
+					locationRow.className = "event-wrapper-location normal xsmall light";
+					if (event.today) locationRow.className += " today";
+					else if (event.dayBeforeYesterday) locationRow.className += " dayBeforeYesterday";
+					else if (event.yesterday) locationRow.className += " yesterday";
+					else if (event.tomorrow) locationRow.className += " tomorrow";
+					else if (event.dayAfterTomorrow) locationRow.className += " dayAfterTomorrow";
 
-			/* one column for each calendar */
-			for (const calendarUrl in calendars) {
-				const calendarColumn = document.createElement("td");
-				for (const event of upcommingDays[day][calendarUrl]) {
-					const eventContent = document.createElement("p");
-
-					const time = document.createElement("span");
-					time.className = `time ${this.timeClassForUrl(event.url)}`;
-					if (!event.fullDayEvent) {
-						time.innerText = event.startDate ? this.timestampToMoment(event.startDate).format("LT") : "";
-					}
-					eventContent.appendChild(time);
-
-					const title = document.createElement("span");
-					title.className = `title ${this.titleClassForUrl(event.url)}`;
-
-					// Repeating count in title
-					let repeatingCountTitle = "";
-					if (this.config.displayRepeatingCountTitle && event.firstYear !== undefined) {
-						repeatingCountTitle = this.countTitleForUrl(event.url);
-						if (repeatingCountTitle !== "") {
-							const thisYear = this.timestampToMoment(event.startDate).year(),
-								yearDiff = thisYear - event.firstYear;
-							if (yearDiff > 0) {
-								repeatingCountTitle = `, ${yearDiff} ${repeatingCountTitle}`;
-							}
-						}
-					}
-
-					let transformedTitle = event.title;
-					if (this.config.customEvents && this.config.customEvents.length > 0) {
-						for (const ev of this.config.customEvents) {
-							const needle = new RegExp(ev.keyword, "gi");
-							if (needle.test(event.title)) {
-								if (typeof ev.transform === "object") {
-									transformedTitle = CalendarUtils.titleTransform(transformedTitle, [ev.transform]);
-								}
-								if (typeof ev.color !== "undefined" && ev.color !== "") {
-									if (this.config.coloredText) {
-										eventContent.style.color = ev.color;
-									}
-								}
-								if (typeof ev.eventClass !== "undefined" && ev.eventClass !== "") {
-									eventContent.className += ` ${ev.eventClass}`;
-								}
-							}
-						}
-					}
-
-					title.innerHTML = CalendarUtils.shorten(transformedTitle, this.config.maxTitleLength, this.config.wrapEvents, this.config.maxTitleLines) + repeatingCountTitle;
-
-					if (this.config.showLocation && event.location) {
-						const location = document.createElement("span");
-						location.className = "location";
-						location.innerText = `(${event.location})`;
-						title.appendChild(document.createTextNode(" "));
-						title.appendChild(location);
-					}
-
-					// Option to support symbols
 					if (this.config.displaySymbol) {
-						const symbolSpan = document.createElement("span");
-						symbolSpan.className = `symbol ${this.symbolClassForUrl(event.url)}`;
-						if (this.config.coloredSymbol) {
-							symbolSpan.style.color = this.colorForUrl(event.url, false);
-						}
-						const symbols = this.symbolsForEvent(event);
-						symbols.forEach((s) => {
-							const symbol = document.createElement("span");
-							symbol.className = s;
-							symbolSpan.appendChild(symbol);
-						});
-						eventContent.appendChild(symbolSpan);
+						const symbolCell = document.createElement("td");
+						locationRow.appendChild(symbolCell);
 					}
 
-					eventContent.appendChild(title);
-
-					if (this.config.coloredText && !eventContent.style.color) {
-						eventContent.style.color = this.colorForUrl(event.url, false);
+					if (this.config.coloredText) {
+						locationRow.style.cssText = `color:${this.colorForUrl(event.url, false)}`;
 					}
 
-					calendarColumn.appendChild(eventContent);
+					if (this.config.coloredBackground) {
+						locationRow.style.backgroundColor = this.colorForUrl(event.url, true);
+					}
+
+					if (this.config.coloredBorder) {
+						locationRow.style.borderColor = this.colorForUrl(event.url, false);
+					}
+
+					const descCell = document.createElement("td");
+					descCell.className = "location";
+					descCell.colSpan = "2";
+
+					const transformedTitle = CalendarUtils.titleTransform(event.location, this.config.locationTitleReplace);
+					descCell.innerHTML = CalendarUtils.shorten(transformedTitle, this.config.maxLocationTitleLength, this.config.wrapLocationEvents, this.config.maxEventTitleLines);
+					locationRow.appendChild(descCell);
+
+					wrapper.appendChild(locationRow);
+
+					if (index >= startFade) {
+						currentFadeStep = index - startFade;
+						locationRow.style.opacity = 1 - (1 / fadeSteps) * currentFadeStep;
+					}
 				}
-				row.appendChild(calendarColumn);
 			}
-			wrapper.appendChild(row);
 		});
+
 		return wrapper;
 	},
 
 	/**
-	 * Converts the given timestamp to a moment with a timezone
+	 * converts the given timestamp to a moment with a timezone
 	 * @param {number} timestamp timestamp from an event
 	 * @returns {moment.Moment} moment with a timezone
 	 */
@@ -558,14 +555,14 @@ Module.register("MMM-FamilyWeekCalendar", {
 				by_url_calevents.sort(function (a, b) {
 					return a.startDate - b.startDate;
 				});
-				Log.debug(`[MMM-FamilyWeekCalendar] pushing ${by_url_calevents.length} events to total with room for ${remainingEntries}`);
+				Log.debug(`[calendar] pushing ${by_url_calevents.length} events to total with room for ${remainingEntries}`);
 				events = events.concat(by_url_calevents.slice(0, remainingEntries));
-				Log.debug(`[MMM-FamilyWeekCalendar] events for calendar=${events.length}`);
+				Log.debug(`[calendar] events for calendar=${events.length}`);
 			} else {
 				events = events.concat(by_url_calevents);
 			}
 		}
-		Log.info(`[MMM-FamilyWeekCalendar] sorting events count=${events.length}`);
+		Log.info(`[calendar] sorting events count=${events.length}`);
 		events.sort(function (a, b) {
 			return a.startDate - b.startDate;
 		});
@@ -599,7 +596,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 			}
 			events = newEvents;
 		}
-		Log.info(`[MMM-FamilyWeekCalendar] slicing events total maxCount=${this.config.maximumEntries}`);
+		Log.info(`[calendar] slicing events total maxCount=${this.config.maximumEntries}`);
 		return events.slice(0, this.config.maximumEntries);
 	},
 
@@ -796,15 +793,10 @@ Module.register("MMM-FamilyWeekCalendar", {
 			let timeText;
 
 			if (!this.config.hideTime && !event.fullDayEvent) {
-				Log.debug("[MMM-FamilyWeekCalendar] event not hidden and not fullday");
-				timeText = `${CalendarUtils.capFirst(eventStartDateMoment.calendar(null, {
-					sameDay: this.config.showTimeToday ? "LT" : `[${this.translate("TODAY")}]`,
-					nextDay: `[${this.translate("TOMORROW")}]`,
-					nextWeek: "dddd",
-					sameElse: event.fullDayEvent ? this.config.fullDayEventDateFormat : this.config.dateFormat
-				}))}`;
+				Log.debug("[calendar] event not hidden and not fullday");
+				timeText = `${CalendarUtils.capFirst(eventStartDateMoment.calendar(null, { sameElse: this.config.dateFormat }))}`;
 			} else {
-				Log.debug("[MMM-FamilyWeekCalendar] event full day or hidden");
+				Log.debug("[calendar] event full day or hidden");
 				timeText = `${CalendarUtils.capFirst(
 					eventStartDateMoment.calendar(null, {
 						sameDay: this.config.showTimeToday ? "LT" : `[${this.translate("TODAY")}]`,
@@ -839,9 +831,9 @@ Module.register("MMM-FamilyWeekCalendar", {
 					}
 				}
 
-				Log.info("[MMM-FamilyWeekCalendar] event fullday");
+				Log.info("[calendar] event fullday");
 			} else if (eventStartDateMoment.diff(now, "h") < this.config.getRelative) {
-				Log.info("[MMM-FamilyWeekCalendar] not full day but within getRelative size");
+				Log.info("[calendar] not full day but within getRelative size");
 				timeText = `${CalendarUtils.capFirst(eventStartDateMoment.fromNow())}`;
 			} else if (this.shouldShowRelativeTimedEnd(event)) {
 				if (this.isSameDay(eventStartDateMoment, eventEndDateMoment)) {
@@ -1039,7 +1031,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 		setTimeout(
 			() => {
 				setInterval(() => {
-					Log.debug("[MMM-FamilyWeekCalendar] self update");
+					Log.debug("[calendar] self update");
 					if (this.config.updateOnFetch) {
 						this.updateDom(1);
 					} else {
