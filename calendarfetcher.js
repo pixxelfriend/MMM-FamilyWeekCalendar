@@ -1,7 +1,12 @@
 const ical = require("node-ical");
 const Log = require("logger");
 const CalendarFetcherUtils = require("./calendarfetcherutils");
-const HTTPFetcher = require("#http_fetcher");
+let HTTPFetcher;
+try {
+	HTTPFetcher = require("#http_fetcher");
+} catch (error) {
+	HTTPFetcher = require("../../js/http_fetcher");
+}
 
 /**
  * CalendarFetcher - Fetches and parses iCal calendar data
@@ -21,7 +26,7 @@ class CalendarFetcher {
 	 * @param {boolean} includePastEvents - Whether to include past events
 	 * @param {boolean} selfSignedCert - Whether to accept self-signed certificates
 	 */
-	constructor (url, reloadInterval, excludedEvents, maximumEntries, maximumNumberOfDays, auth, includePastEvents, selfSignedCert) {
+	constructor(url, reloadInterval, excludedEvents, maximumEntries, maximumNumberOfDays, auth, includePastEvents, selfSignedCert) {
 		this.url = url;
 		this.excludedEvents = excludedEvents;
 		this.maximumEntries = maximumEntries;
@@ -30,8 +35,8 @@ class CalendarFetcher {
 
 		this.events = [];
 		this.lastFetch = null;
-		this.fetchFailedCallback = () => {};
-		this.eventsReceivedCallback = () => {};
+		this.fetchFailedCallback = () => { };
+		this.eventsReceivedCallback = () => { };
 
 		// Use HTTPFetcher for HTTP handling (Composition)
 		this.httpFetcher = new HTTPFetcher(url, {
@@ -49,7 +54,7 @@ class CalendarFetcher {
 	 * Handles successful HTTP response
 	 * @param {Response} response - The fetch Response object
 	 */
-	async #handleResponse (response) {
+	async #handleResponse(response) {
 		try {
 			const responseData = await response.text();
 			const parsed = ical.parseICS(responseData);
@@ -83,7 +88,7 @@ class CalendarFetcher {
 	/**
 	 * Starts fetching calendar data
 	 */
-	fetchCalendar () {
+	fetchCalendar() {
 		this.httpFetcher.startPeriodicFetch();
 	}
 
@@ -92,7 +97,7 @@ class CalendarFetcher {
 	 * Uses reloadInterval as the threshold to respect user's configured fetchInterval.
 	 * @returns {boolean} True if a new fetch should be performed
 	 */
-	shouldRefetch () {
+	shouldRefetch() {
 		if (!this.lastFetch) {
 			return true;
 		}
@@ -103,7 +108,7 @@ class CalendarFetcher {
 	/**
 	 * Broadcasts the current events to listeners
 	 */
-	broadcastEvents () {
+	broadcastEvents() {
 		Log.info(`Broadcasting ${this.events.length} events from ${this.url}.`);
 		this.eventsReceivedCallback(this);
 	}
@@ -112,7 +117,7 @@ class CalendarFetcher {
 	 * Sets the callback for successful event fetches
 	 * @param {(fetcher: CalendarFetcher) => void} callback - Called when events are received
 	 */
-	onReceive (callback) {
+	onReceive(callback) {
 		this.eventsReceivedCallback = callback;
 	}
 
@@ -120,7 +125,7 @@ class CalendarFetcher {
 	 * Sets the callback for fetch failures
 	 * @param {(fetcher: CalendarFetcher, error: Error) => void} callback - Called when a fetch fails
 	 */
-	onError (callback) {
+	onError(callback) {
 		this.fetchFailedCallback = callback;
 	}
 }
