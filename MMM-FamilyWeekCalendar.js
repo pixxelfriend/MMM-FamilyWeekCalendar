@@ -24,7 +24,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 		defaultRepeatingCountTitle: "",
 		maxTitleLength: 30,
 		maxLocationTitleLength: 25,
-		wrapEvents: false, // Wrap events to multiple lines breaking at maxTitleLength
+		wrapEvents: true, // Wrap events to multiple lines breaking at maxTitleLength
 		wrapLocationEvents: false,
 		maxTitleLines: 3,
 		maxEventTitleLines: 3,
