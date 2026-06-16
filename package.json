@@ -1,0 +1,18 @@
+{
+  "name": "MMM-FamilyWeekCalendar",
+  "version": "1.0.0",
+  "description": "A MagicMirror² module to display events from multiple calendars in a weekly column layout.",
+  "main": "MMM-FamilyWeekCalendar.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 0"
+  },
+  "keywords": [
+    "magicmirror",
+    "magicmirror-module",
+    "calendar",
+    "family",
+    "week"
+  ],
+  "author": "Steffen Hoffmann",
+  "license": "MIT"
+}
