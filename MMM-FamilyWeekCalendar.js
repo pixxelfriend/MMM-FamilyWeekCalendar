@@ -50,8 +50,8 @@ Module.register("MMM-FamilyWeekCalendar", {
 		tableClass: "small",
 		calendars: [
 			{
-				name: "holidays",
-				url: "http://www.calendarlabs.com/templates/ical/US-Holidays.ics",
+				symbol: "calendar-alt",
+				url: "https://www.calendarlabs.com/templates/ical/US-Holidays.ics"
 			},
 		],
 		customEvents: [
@@ -78,22 +78,28 @@ Module.register("MMM-FamilyWeekCalendar", {
 	},
 
 	// Define required scripts.
-	getStyles () {
+	getStyles() {
 		return ["MMM-FamilyWeekCalendar.css", "font-awesome.css"];
 	},
 
 	// Define required scripts.
-	getScripts () {
+	getScripts() {
 		return ["calendarutils.js", "moment.js", "moment-timezone.js"];
 	},
 
 	// Define required translations.
-	getTranslations () {
+	getTranslations() {
+
+		/*
+ * The translations for the default modules are defined in the core translation files.
+ * Therefore we can just return false. Otherwise we should have returned a dictionary.
+ * If you're trying to build your own module including translations, check out the documentation.
+ */
 		return false;
 	},
 
 	// Override start method.
-	start () {
+	start() {
 		Log.info(`Starting module: ${this.name}`);
 
 		if (this.config.colored) {
@@ -170,14 +176,14 @@ Module.register("MMM-FamilyWeekCalendar", {
 		this.selfUpdate();
 	},
 
-	notificationReceived (notification, payload) {
+	notificationReceived(notification, payload) {
 		if (notification === "FETCH_CALENDAR") {
 			this.sendSocketNotification(notification, { url: payload.url, id: this.identifier });
 		}
 	},
 
 	// Override socket notification handler.
-	socketNotificationReceived (notification, payload) {
+	socketNotificationReceived(notification, payload) {
 
 		if (this.identifier !== payload.id) {
 			return;
@@ -227,7 +233,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	},
 
 	// Override dom generator.
-	getDom () {
+	getDom() {
 		let day = moment();
 		const dayKeyFormat = "YYYY-MM-DD";
 		let currentFadeStep = 0;
@@ -310,7 +316,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 							}
 						}
 					}
-				/* multiday events which are not fullday */
+					/* multiday events which are not fullday */
 				} else {
 					for (const dKey in upcommingDays) {
 						const clonedEvent = { ...currentEvent };
@@ -464,7 +470,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {number} timestamp timestamp from an event
 	 * @returns {moment.Moment} moment with a timezone
 	 */
-	timestampToMoment (timestamp) {
+	timestampToMoment(timestamp) {
 		return moment(timestamp, "x").tz(moment.tz.guess());
 	},
 
@@ -473,7 +479,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {boolean} limitNumberOfEntries Whether to filter returned events for display.
 	 * @returns {object[]} Array with events.
 	 */
-	createEventList (limitNumberOfEntries) {
+	createEventList(limitNumberOfEntries) {
 		let now = moment();
 		let future = now.clone().startOf("day").add(this.config.maximumNumberOfDays, "days");
 
@@ -603,7 +609,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 		return events.slice(0, this.config.maximumEntries);
 	},
 
-	listContainsEvent (eventList, event) {
+	listContainsEvent(eventList, event) {
 		for (const evt of eventList) {
 			if (evt.title === event.title && parseInt(evt.startDate) === parseInt(event.startDate) && parseInt(evt.endDate) === parseInt(event.endDate)) {
 				return true;
@@ -618,7 +624,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {object} auth The authentication method and credentials
 	 * @param {object} calendarConfig The config of the specific calendar
 	 */
-	addCalendar (url, auth, calendarConfig) {
+	addCalendar(url, auth, calendarConfig) {
 		this.sendSocketNotification("ADD_CALENDAR", {
 			id: this.identifier,
 			url: url,
@@ -641,7 +647,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {object} event Event to look for.
 	 * @returns {string[]} The symbols
 	 */
-	symbolsForEvent (event) {
+	symbolsForEvent(event) {
 		let symbols = this.getCalendarPropertyAsArray(event.url, "symbol", this.config.defaultSymbol);
 
 		if (event.recurringEvent === true && this.hasCalendarProperty(event.url, "recurringSymbol")) {
@@ -668,7 +674,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 		return symbols;
 	},
 
-	mergeUnique (arr1, arr2) {
+	mergeUnique(arr1, arr2) {
 		return arr1.concat(
 			arr2.filter(function (item) {
 				return arr1.indexOf(item) === -1;
@@ -676,7 +682,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 		);
 	},
 
-	createDateHeadersTimeWrapper (url) {
+	createDateHeadersTimeWrapper(url) {
 		const timeWrapper = document.createElement("td");
 		timeWrapper.className = `time light ${this.config.flipDateHeaderTitle ? "align-right " : "align-left "}${this.timeClassForUrl(url)}`;
 		timeWrapper.style.paddingLeft = "2px";
@@ -684,23 +690,23 @@ Module.register("MMM-FamilyWeekCalendar", {
 		return timeWrapper;
 	},
 
-	hasEventDuration (event) {
+	hasEventDuration(event) {
 		return event.startDate !== event.endDate;
 	},
 
-	shouldShowDateHeadersTimedEnd (event) {
+	shouldShowDateHeadersTimedEnd(event) {
 		return this.config.showEnd && (!this.config.showEndsOnlyWithDuration || this.hasEventDuration(event));
 	},
 
-	shouldShowRelativeTimedEnd (event) {
+	shouldShowRelativeTimedEnd(event) {
 		return !this.config.hideTime && this.config.showEnd && (!this.config.showEndsOnlyWithDuration || this.hasEventDuration(event));
 	},
 
-	getAdjustedFullDayEndMoment (endMoment) {
+	getAdjustedFullDayEndMoment(endMoment) {
 		return endMoment.clone().subtract(1, "second");
 	},
 
-	renderDateHeadersEventTime (eventWrapper, titleWrapper, event, eventStartDateMoment, eventEndDateMoment) {
+	renderDateHeadersEventTime(eventWrapper, titleWrapper, event, eventStartDateMoment, eventEndDateMoment) {
 		if (this.config.flipDateHeaderTitle) eventWrapper.appendChild(titleWrapper);
 
 		if (event.fullDayEvent) {
@@ -730,7 +736,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 		if (!this.config.flipDateHeaderTitle) eventWrapper.appendChild(titleWrapper);
 	},
 
-	buildAbsoluteTimeText (event, eventStartDateMoment, eventEndDateMoment, now) {
+	buildAbsoluteTimeText(event, eventStartDateMoment, eventEndDateMoment, now) {
 		let timeText = CalendarUtils.capFirst(eventStartDateMoment.format(this.config.dateFormat));
 
 		if (this.config.showEnd && (!this.config.showEndsOnlyWithDuration || this.hasEventDuration(event))) {
@@ -791,7 +797,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 		return timeText;
 	},
 
-	buildRelativeTimeText (event, eventStartDateMoment, eventEndDateMoment, now) {
+	buildRelativeTimeText(event, eventStartDateMoment, eventEndDateMoment, now) {
 		if (eventStartDateMoment.isSameOrAfter(now) || (event.fullDayEvent && eventEndDateMoment.diff(now, "days") === 0)) {
 			let timeText;
 
@@ -870,7 +876,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {moment.Moment} endMoment The end moment.
 	 * @returns {boolean} True when both moments share the same calendar day.
 	 */
-	isSameDay (startMoment, endMoment) {
+	isSameDay(startMoment, endMoment) {
 		return startMoment.isSame(endMoment, "d");
 	},
 
@@ -878,7 +884,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * Checks whether the configured dateFormat already contains time components.
 	 * @returns {boolean} True when dateFormat includes time tokens.
 	 */
-	dateFormatIncludesTime () {
+	dateFormatIncludesTime() {
 		const dateFormatWithoutLiterals = this.config.dateFormat.replace(/\[[^\]]*\]/g, "");
 		const localeDateFormat = moment.localeData();
 		const expandedDateFormat = dateFormatWithoutLiterals.replace(
@@ -896,7 +902,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {moment.Moment} endMoment The event end moment.
 	 * @returns {string} The formatted end value.
 	 */
-	formatTimedEventEnd (startMoment, endMoment) {
+	formatTimedEventEnd(startMoment, endMoment) {
 		const endFormat = this.isSameDay(startMoment, endMoment) ? "LT" : this.config.dateEndFormat;
 		return CalendarUtils.capFirst(endMoment.format(endFormat));
 	},
@@ -906,7 +912,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {string} url The calendar url
 	 * @returns {string} The class to be used for the symbols of the calendar
 	 */
-	symbolClassForUrl (url) {
+	symbolClassForUrl(url) {
 		return this.getCalendarProperty(url, "symbolClass", "");
 	},
 
@@ -915,7 +921,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {string} url The calendar url
 	 * @returns {string} The class to be used for the title of the calendar
 	 */
-	titleClassForUrl (url) {
+	titleClassForUrl(url) {
 		return this.getCalendarProperty(url, "titleClass", "");
 	},
 
@@ -924,7 +930,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {string} url The calendar url
 	 * @returns {string} The class to be used for the time of the calendar
 	 */
-	timeClassForUrl (url) {
+	timeClassForUrl(url) {
 		return this.getCalendarProperty(url, "timeClass", "");
 	},
 
@@ -933,7 +939,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {string} url The calendar url
 	 * @returns {string} The name of the calendar
 	 */
-	calendarNameForUrl (url) {
+	calendarNameForUrl(url) {
 		return this.getCalendarProperty(url, "name", "");
 	},
 
@@ -943,7 +949,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {boolean} isBg Determines if we fetch the bgColor or not
 	 * @returns {string} The color
 	 */
-	colorForUrl (url, isBg) {
+	colorForUrl(url, isBg) {
 		return this.getCalendarProperty(url, isBg ? "bgColor" : "color", "#fff");
 	},
 
@@ -952,7 +958,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {string} url The calendar url
 	 * @returns {string} The title
 	 */
-	countTitleForUrl (url) {
+	countTitleForUrl(url) {
 		return this.getCalendarProperty(url, "repeatingCountTitle", this.config.defaultRepeatingCountTitle);
 	},
 
@@ -961,7 +967,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {string} url The calendar url
 	 * @returns {number} The maximum entry count
 	 */
-	maximumEntriesForUrl (url) {
+	maximumEntriesForUrl(url) {
 		return this.getCalendarProperty(url, "maximumEntries", this.config.maximumEntries);
 	},
 
@@ -970,7 +976,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {string} url The calendar url
 	 * @returns {number} The maximum past days count
 	 */
-	maximumPastDaysForUrl (url) {
+	maximumPastDaysForUrl(url) {
 		return this.getCalendarProperty(url, "pastDaysCount", this.config.pastDaysCount);
 	},
 
@@ -981,7 +987,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * @param {string} defaultValue The value if the property is not found
 	 * @returns {string} The property
 	 */
-	getCalendarProperty (url, property, defaultValue) {
+	getCalendarProperty(url, property, defaultValue) {
 		for (const calendar of this.config.calendars) {
 			if (calendar.url === url && calendar.hasOwnProperty(property)) {
 				return calendar[property];
@@ -991,7 +997,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 		return defaultValue;
 	},
 
-	getCalendarPropertyAsArray (url, property, defaultValue) {
+	getCalendarPropertyAsArray(url, property, defaultValue) {
 		let p = this.getCalendarProperty(url, property, defaultValue);
 		if (property === "symbol" || property === "recurringSymbol" || property === "fullDaySymbol") {
 			const className = this.getCalendarProperty(url, "symbolClassName", this.config.defaultSymbolClassName);
@@ -1006,7 +1012,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 		return p;
 	},
 
-	hasCalendarProperty (url, property) {
+	hasCalendarProperty(url, property) {
 		return !!this.getCalendarProperty(url, property, undefined);
 	},
 
@@ -1014,7 +1020,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * Broadcasts the events to all other modules for reuse.
 	 * The all events available in one array, sorted on startDate.
 	 */
-	broadcastEvents () {
+	broadcastEvents() {
 		const eventList = this.createEventList(false);
 		for (const event of eventList) {
 			event.symbol = this.symbolsForEvent(event);
@@ -1034,7 +1040,7 @@ Module.register("MMM-FamilyWeekCalendar", {
 	 * and it's allow to refresh The DOM every minute with animation speed too
 	 * (because updateDom is not set in CALENDAR_EVENTS for this case)
 	 */
-	selfUpdate () {
+	selfUpdate() {
 		const ONE_MINUTE = 60 * 1000;
 		setTimeout(
 			() => {
